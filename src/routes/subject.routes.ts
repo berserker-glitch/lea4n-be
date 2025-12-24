@@ -17,6 +17,12 @@ import {
     createConversationSchema,
     listQuerySchema as conversationListQuerySchema,
 } from '../controllers/conversation.controller';
+import {
+    uploadFiles,
+    getFilesBySubject,
+    listQuerySchema as fileListQuerySchema,
+} from '../controllers/file.controller';
+import { upload } from '../config/upload';
 
 const router = Router();
 
@@ -109,4 +115,35 @@ router.get(
     getConversationsBySubject
 );
 
+// ===========================================
+// NESTED FILE ROUTES
+// ===========================================
+
+/**
+ * @route   POST /subjects/:subjectId/files
+ * @desc    Upload files to a subject
+ * @access  Private
+ */
+router.post(
+    '/:subjectId/files',
+    validate(subjectIdParamSchema, 'params'),
+    upload.array('files', 10),
+    uploadFiles
+);
+
+/**
+ * @route   GET /subjects/:subjectId/files
+ * @desc    Get all files for a subject
+ * @access  Private
+ */
+router.get(
+    '/:subjectId/files',
+    validateAll({
+        params: subjectIdParamSchema,
+        query: fileListQuerySchema,
+    }),
+    getFilesBySubject
+);
+
 export default router;
+

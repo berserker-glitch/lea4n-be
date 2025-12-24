@@ -21,9 +21,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations - Each user owns their subjects and conversations
+  // Relations - Each user owns their subjects, conversations, and files
   subjects      Subject[]
   conversations Conversation[]
+  files         File[]
 
   @@map("users")
 }
@@ -43,8 +44,9 @@ model Subject {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // A subject can have multiple conversations
+  // A subject can have multiple conversations and files
   conversations Conversation[]
+  files         File[]
 
   @@index([userId])
   @@map("subjects")
@@ -96,10 +98,52 @@ model Message {
 }
 
 // ===========================================
+// FILE MODEL
+// ===========================================
+// Files uploaded by users, associated with subjects
+model File {
+  id           String   @id @default(uuid())
+  name         String
+  originalName String
+  mimeType     String
+  size         Int
+  type         FileType
+  path         String
+  tag          FileTag?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Subject relation - file belongs to a subject
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  // Direct user relation for efficient querying
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@index([userId])
+  @@map("files")
+}
+
+// ===========================================
 // ENUMS
 // ===========================================
 enum MessageRole {
   USER
   ASSISTANT
   SYSTEM
+}
+
+enum FileType {
+  PDF
+  IMAGE
+  DOCUMENT
+  OTHER
+}
+
+enum FileTag {
+  EXAM
+  EXERCISE
+  COURSE
 }

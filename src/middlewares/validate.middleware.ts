@@ -57,7 +57,7 @@ export const validateAll = <
     query?: ZodSchema<TQuery>;
     params?: ZodSchema<TParams>;
 }) => {
-    return (req: Request, res: Response, next: NextFunction): void => {
+    return (req: Request, _res: Response, next: NextFunction): void => {
         const errors: string[] = [];
 
         for (const [target, schema] of Object.entries(schemas)) {

@@ -191,7 +191,7 @@ export class AuthService {
         return jwt.sign(
             { userId, email },
             config.jwtSecret,
-            { expiresIn: config.jwtExpiresIn }
+            { expiresIn: config.jwtExpiresIn as jwt.SignOptions['expiresIn'] }
         );
     }
 }
