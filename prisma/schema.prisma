@@ -1,0 +1,105 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DB_URL")
+}
+
+// ===========================================
+// USER MODEL
+// ===========================================
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations - Each user owns their subjects and conversations
+  subjects      Subject[]
+  conversations Conversation[]
+
+  @@map("users")
+}
+
+// ===========================================
+// SUBJECT MODEL
+// ===========================================
+// Subjects are isolated per user - each user has their own subjects
+model Subject {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Owner relation - strict isolation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // A subject can have multiple conversations
+  conversations Conversation[]
+
+  @@index([userId])
+  @@map("subjects")
+}
+
+// ===========================================
+// CONVERSATION MODEL
+// ===========================================
+// Conversations belong to a subject, which belongs to a user
+// This creates a hierarchy: User -> Subject -> Conversation
+model Conversation {
+  id        String   @id @default(uuid())
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Subject relation - conversation belongs to a subject
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  // Direct user relation for efficient querying and double validation
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Messages within this conversation
+  messages Message[]
+
+  @@index([subjectId])
+  @@index([userId])
+  @@map("conversations")
+}
+
+// ===========================================
+// MESSAGE MODEL
+// ===========================================
+// Messages belong to a conversation
+model Message {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  role      MessageRole
+  createdAt DateTime @default(now())
+
+  // Conversation relation
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+// ===========================================
+// ENUMS
+// ===========================================
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
