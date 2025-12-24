@@ -34,3 +34,10 @@ export {
     conversationIdParamSchema,
     listQuerySchema as conversationListQuerySchema,
 } from './conversation.controller';
+
+export {
+    sendMessage,
+    getMessages,
+    sendMessageSchema,
+    conversationIdParamSchema as messageConversationIdParamSchema,
+} from './message.controller';
