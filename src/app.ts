@@ -2,6 +2,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import { config, isDevelopment } from './config';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middlewares';
@@ -56,6 +57,12 @@ app.use(express.json({ limit: '10mb' }));
 
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ===========================================
+// STATIC FILES - Serve uploaded files
+// ===========================================
+
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ===========================================
 // ROUTES

@@ -106,3 +106,20 @@ export const deleteSubject = asyncHandler(async (req: Request, res: Response) =>
         message: 'Subject deleted successfully',
     });
 });
+
+/**
+ * Toggle pin status of a subject
+ * POST /subjects/:subjectId/pin
+ */
+export const togglePinSubject = asyncHandler(async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const { subjectId } = req.params;
+    const subject = await subjectService.togglePin(authReq.user.id, subjectId);
+
+    res.status(200).json({
+        success: true,
+        message: subject.isPinned ? 'Subject pinned' : 'Subject unpinned',
+        data: subject,
+    });
+});
+

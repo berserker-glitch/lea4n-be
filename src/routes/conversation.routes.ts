@@ -5,6 +5,7 @@ import {
     getConversation,
     updateConversation,
     deleteConversation,
+    togglePinConversation,
     updateConversationSchema,
     conversationIdParamSchema,
     listQuerySchema,
@@ -52,6 +53,17 @@ router.patch(
 );
 
 /**
+ * @route   POST /conversations/:conversationId/pin
+ * @desc    Toggle pin status of a conversation
+ * @access  Private
+ */
+router.post(
+    '/:conversationId/pin',
+    validate(conversationIdParamSchema, 'params'),
+    togglePinConversation
+);
+
+/**
  * @route   DELETE /conversations/:conversationId
  * @desc    Delete a conversation
  * @access  Private
@@ -63,3 +75,4 @@ router.delete(
 );
 
 export default router;
+

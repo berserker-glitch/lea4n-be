@@ -6,6 +6,7 @@ import {
     getSubject,
     updateSubject,
     deleteSubject,
+    togglePinSubject,
     createSubjectSchema,
     updateSubjectSchema,
     subjectIdParamSchema,
@@ -70,6 +71,17 @@ router.patch(
         body: updateSubjectSchema,
     }),
     updateSubject
+);
+
+/**
+ * @route   POST /subjects/:subjectId/pin
+ * @desc    Toggle pin status of a subject
+ * @access  Private
+ */
+router.post(
+    '/:subjectId/pin',
+    validate(subjectIdParamSchema, 'params'),
+    togglePinSubject
 );
 
 /**

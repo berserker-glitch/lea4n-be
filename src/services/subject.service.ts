@@ -157,7 +157,34 @@ export class SubjectService {
             throw AppError.notFound('Subject not found', 'SUBJECT_NOT_FOUND');
         }
     }
+
+    /**
+     * Toggle pin status of a subject
+     */
+    async togglePin(userId: string, subjectId: string) {
+        const existing = await prisma.subject.findFirst({
+            where: { id: subjectId, userId },
+            select: { id: true, isPinned: true },
+        });
+
+        if (!existing) {
+            throw AppError.notFound('Subject not found', 'SUBJECT_NOT_FOUND');
+        }
+
+        const subject = await prisma.subject.update({
+            where: { id: subjectId },
+            data: { isPinned: !existing.isPinned },
+            include: {
+                _count: {
+                    select: { conversations: true },
+                },
+            },
+        });
+
+        return subject;
+    }
 }
 
 // Export singleton instance
 export const subjectService = new SubjectService();
+

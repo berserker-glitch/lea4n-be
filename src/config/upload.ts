@@ -1,7 +1,6 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { AppError } from '../utils';
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../../uploads');
@@ -31,11 +30,9 @@ const fileFilter = (
     if (allowedMimeTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
-        cb(new AppError(
-            `File type ${file.mimetype} is not allowed. Allowed types: PDF, TXT, JPEG, PNG, GIF, WebP, SVG`,
-            400,
-            'INVALID_FILE_TYPE'
-        ) as unknown as null);
+        cb(new Error(
+            `File type ${file.mimetype} is not allowed. Allowed types: PDF, TXT, JPEG, PNG, GIF, WebP, SVG`
+        ));
     }
 };
 

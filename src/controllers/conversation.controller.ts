@@ -132,3 +132,20 @@ export const deleteConversation = asyncHandler(async (req: Request, res: Respons
         message: 'Conversation deleted successfully',
     });
 });
+
+/**
+ * Toggle pin status of a conversation
+ * POST /conversations/:conversationId/pin
+ */
+export const togglePinConversation = asyncHandler(async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const { conversationId } = req.params;
+    const conversation = await conversationService.togglePin(authReq.user.id, conversationId);
+
+    res.status(200).json({
+        success: true,
+        message: conversation.isPinned ? 'Conversation pinned' : 'Conversation unpinned',
+        data: conversation,
+    });
+});
+

@@ -223,7 +223,38 @@ export class ConversationService {
             throw AppError.notFound('Conversation not found', 'CONVERSATION_NOT_FOUND');
         }
     }
+
+    /**
+     * Toggle pin status of a conversation
+     */
+    async togglePin(userId: string, conversationId: string) {
+        // Verify ownership
+        const existing = await prisma.conversation.findFirst({
+            where: { id: conversationId, userId },
+            select: { id: true, isPinned: true },
+        });
+
+        if (!existing) {
+            throw AppError.notFound('Conversation not found', 'CONVERSATION_NOT_FOUND');
+        }
+
+        const conversation = await prisma.conversation.update({
+            where: { id: conversationId },
+            data: { isPinned: !existing.isPinned },
+            include: {
+                subject: {
+                    select: { id: true, title: true },
+                },
+                _count: {
+                    select: { messages: true },
+                },
+            },
+        });
+
+        return conversation;
+    }
 }
 
 // Export singleton instance
 export const conversationService = new ConversationService();
+
