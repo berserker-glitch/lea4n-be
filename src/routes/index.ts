@@ -4,6 +4,7 @@ import subjectRoutes from './subject.routes';
 import conversationRoutes from './conversation.routes';
 import fileRoutes from './file.routes';
 import messageRoutes from './message.routes';
+import feedbackRoutes from './feedback.routes';
 
 const router = Router();
 
@@ -22,6 +23,8 @@ router.use('/subjects', subjectRoutes);
 router.use('/conversations', conversationRoutes);
 router.use('/conversations', messageRoutes); // Message routes nested under conversations
 router.use('/files', fileRoutes);
+router.use('/feedback', feedbackRoutes);
 
 export default router;
+
 

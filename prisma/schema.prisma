@@ -22,9 +22,10 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations - Each user owns their subjects, conversations, and files
-  subjects      Subject[]
-  conversations Conversation[]
-  files         File[]
+  subjects        Subject[]
+  conversations   Conversation[]
+  files           File[]
+  messageFeedback MessageFeedback[]
 
   @@map("users")
 }
@@ -95,8 +96,35 @@ model Message {
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
+  // Feedback relation
+  feedback MessageFeedback?
+
   @@index([conversationId])
   @@map("messages")
+}
+
+// ===========================================
+// MESSAGE FEEDBACK MODEL
+// ===========================================
+// Feedback on AI messages (like/dislike with optional details)
+model MessageFeedback {
+  id        String   @id @default(uuid())
+  isLiked   Boolean  // true = like, false = dislike
+  reasons   String?  @db.Text // JSON array of reasons for dislike
+  feedback  String?  @db.Text // Optional custom feedback text
+  createdAt DateTime @default(now())
+
+  // Message relation - feedback is for a specific message
+  messageId String   @unique
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  // User who gave the feedback
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([userId])
+  @@map("message_feedback")
 }
 
 // ===========================================

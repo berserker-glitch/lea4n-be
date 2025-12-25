@@ -38,7 +38,7 @@ export class MessageService {
     }
 
     /**
-     * Get all messages for a conversation
+     * Get all messages for a conversation with feedback
      */
     async findByConversation(userId: string, conversationId: string) {
         // Verify user owns the conversation
@@ -47,9 +47,26 @@ export class MessageService {
         const messages = await prisma.message.findMany({
             where: { conversationId },
             orderBy: { createdAt: 'asc' },
+            include: {
+                feedback: {
+                    select: {
+                        id: true,
+                        isLiked: true,
+                        reasons: true,
+                        feedback: true,
+                    }
+                }
+            }
         });
 
-        return messages;
+        // Parse feedback reasons JSON for each message
+        return messages.map(msg => ({
+            ...msg,
+            feedback: msg.feedback ? {
+                ...msg.feedback,
+                reasons: msg.feedback.reasons ? JSON.parse(msg.feedback.reasons) : [],
+            } : null,
+        }));
     }
 
     /**
