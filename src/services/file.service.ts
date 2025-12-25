@@ -2,7 +2,8 @@ import prisma from '../config/database';
 import { AppError } from '../utils';
 import { getFileType, deleteFileFromDisk } from '../config/upload';
 import { subjectService } from './subject.service';
-import { FileType, FileTag } from '@prisma/client';
+import { fileProcessorService } from './file-processor.service';
+import { FileType, FileTag, ProcessStatus } from '@prisma/client';
 
 export interface UploadedFile {
     filename: string;
@@ -49,7 +50,13 @@ export class FileService {
                 tag,
                 subjectId,
                 userId,
+                processStatus: ProcessStatus.PENDING,
             },
+        });
+
+        // Trigger processing in the background
+        fileProcessorService.processFile(fileRecord.id).catch(err => {
+            console.error(`Failed to trigger processing for file ${fileRecord.id}:`, err);
         });
 
         return fileRecord;
@@ -249,6 +256,45 @@ export class FileService {
         if (!file) {
             throw AppError.notFound('File not found', 'FILE_NOT_FOUND');
         }
+    }
+
+    /**
+     * Get processing status for a file
+     */
+    async getProcessingStatus(userId: string, fileId: string) {
+        const file = await prisma.file.findFirst({
+            where: { id: fileId, userId },
+            select: {
+                id: true,
+                processStatus: true,
+                processedAt: true,
+                chunkCount: true,
+            }
+        });
+
+        if (!file) {
+            throw AppError.notFound('File not found', 'FILE_NOT_FOUND');
+        }
+
+        return file;
+    }
+
+    /**
+     * Retry processing for a failed file
+     */
+    async retryProcessing(userId: string, fileId: string) {
+        const file = await this.findById(userId, fileId);
+
+        if (file.processStatus === ProcessStatus.PROCESSING) {
+            throw AppError.badRequest('File is already being processed');
+        }
+
+        // Trigger processing in the background
+        fileProcessorService.processFile(file.id).catch(err => {
+            console.error(`Failed to trigger processing for file ${file.id}:`, err);
+        });
+
+        return { message: 'Processing started' };
     }
 }
 

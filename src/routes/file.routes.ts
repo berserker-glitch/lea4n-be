@@ -5,6 +5,8 @@ import {
     getFile,
     updateFileTag,
     deleteFile,
+    getFileStatus,
+    retryProcessing,
     fileIdParamSchema,
     updateFileTagSchema,
     listQuerySchema,
@@ -60,6 +62,28 @@ router.delete(
     '/:fileId',
     validate(fileIdParamSchema, 'params'),
     deleteFile
+);
+
+/**
+ * @route   GET /files/:fileId/status
+ * @desc    Get file processing status
+ * @access  Private
+ */
+router.get(
+    '/:fileId/status',
+    validate(fileIdParamSchema, 'params'),
+    getFileStatus
+);
+
+/**
+ * @route   POST /files/:fileId/retry
+ * @desc    Retry file processing
+ * @access  Private
+ */
+router.post(
+    '/:fileId/retry',
+    validate(fileIdParamSchema, 'params'),
+    retryProcessing
 );
 
 export default router;

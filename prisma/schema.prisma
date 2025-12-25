@@ -132,16 +132,19 @@ model MessageFeedback {
 // ===========================================
 // Files uploaded by users, associated with subjects
 model File {
-  id           String   @id @default(uuid())
-  name         String
-  originalName String
-  mimeType     String
-  size         Int
-  type         FileType
-  path         String
-  tag          FileTag?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String         @id @default(uuid())
+  name          String
+  originalName  String
+  mimeType      String
+  size          Int
+  type          FileType
+  path          String
+  tag           FileTag?
+  processStatus ProcessStatus  @default(PENDING)
+  processedAt   DateTime?
+  chunkCount    Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   // Subject relation - file belongs to a subject
   subjectId String
@@ -151,9 +154,54 @@ model File {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // RAG chunks
+  chunks FileChunk[]
+
   @@index([subjectId])
   @@index([userId])
   @@map("files")
+}
+
+// ===========================================
+// FILE CHUNK MODEL
+// ===========================================
+// Processed text chunks from uploaded files for RAG
+model FileChunk {
+  id         String   @id @default(uuid())
+  content    String   @db.Text // The actual text content
+  chunkIndex Int // Position in the original file
+  startPage  Int? // For PDFs - which page
+  endPage    Int? // For PDFs - end page
+  metadata   String?  @db.Text // JSON metadata (headers, section titles, etc.)
+  createdAt  DateTime @default(now())
+
+  // File relation
+  fileId String
+  file   File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  // Embedding relation
+  embedding FileEmbedding?
+
+  @@index([fileId])
+  @@map("file_chunks")
+}
+
+// ===========================================
+// FILE EMBEDDING MODEL
+// ===========================================
+// Vector embeddings for semantic search
+model FileEmbedding {
+  id        String   @id @default(uuid())
+  vector    String   @db.MediumText // JSON array of floats (e.g., 1536 dimensions)
+  model     String // e.g., "openai/text-embedding-3-small"
+  createdAt DateTime @default(now())
+
+  // Chunk relation (1:1)
+  chunkId String    @unique
+  chunk   FileChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@index([chunkId])
+  @@map("file_embeddings")
 }
 
 // ===========================================
@@ -176,4 +224,11 @@ enum FileTag {
   EXAM
   EXERCISE
   COURSE
+}
+
+enum ProcessStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }

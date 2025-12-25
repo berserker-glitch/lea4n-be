@@ -153,3 +153,33 @@ export const deleteFile = asyncHandler(async (req: Request, res: Response) => {
         message: 'File deleted successfully',
     });
 });
+
+/**
+ * Get file processing status
+ * GET /files/:fileId/status
+ */
+export const getFileStatus = asyncHandler(async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const { fileId } = req.params;
+    const status = await fileService.getProcessingStatus(authReq.user.id, fileId);
+
+    res.status(200).json({
+        success: true,
+        data: status,
+    });
+});
+
+/**
+ * Retry file processing
+ * POST /files/:fileId/retry
+ */
+export const retryProcessing = asyncHandler(async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    const { fileId } = req.params;
+    const result = await fileService.retryProcessing(authReq.user.id, fileId);
+
+    res.status(200).json({
+        success: true,
+        ...result,
+    });
+});

@@ -1,6 +1,8 @@
 import prisma from '../config/database';
+import { AppError } from '../utils';
 import { conversationService } from './conversation.service';
-import { aiService } from './ai.service';
+import { aiService, buildSystemPrompt } from './ai.service';
+import { ragService } from './rag.service';
 import { MessageRole } from '@prisma/client';
 
 export interface CreateMessageInput {
@@ -85,26 +87,53 @@ export class MessageService {
     }
 
     /**
-     * Send a message and get AI response
-     * Creates both user message and AI response
+     * Send a message and get AI response using RAG
      */
-    async sendMessageAndGetResponse(userId: string, conversationId: string, content: string) {
-        // Verify ownership
-        await conversationService.verifyOwnership(userId, conversationId);
+    async sendMessageAndGetResponse(
+        userId: string,
+        conversationId: string,
+        content: string
+    ) {
+        // 1. Verify ownership and get conversation context with subject name
+        const conversation = await prisma.conversation.findFirst({
+            where: { id: conversationId, userId },
+            select: {
+                subjectId: true,
+                subject: { select: { title: true } }
+            }
+        });
 
-        // Create user message
+        if (!conversation) {
+            throw AppError.notFound('Conversation not found');
+        }
+
+        const subjectName = conversation.subject?.title;
+
+        // 2. Create user message
         const userMessage = await this.create(userId, conversationId, {
             content,
             role: 'USER',
         });
 
-        // Get conversation history for context
+        // 3. Retrieve relevant context from files
+        // By default, retrieve from any course/exam/exercise file in the subject
+        const retrievalResult = await ragService.retrieve(userId, content, {
+            subjectId: conversation.subjectId,
+            topK: 5
+        });
+
+        const contextText = ragService.formatContext(retrievalResult.chunks);
+
+        // 4. Build smart AI prompt with subject context
+        const systemPrompt = buildSystemPrompt(subjectName, contextText);
+
+        // 5. Get conversation history
         const history = await this.getConversationHistory(userId, conversationId);
 
-        // Get AI response
-        const aiResponse = await aiService.chat(history);
+        // 6. Get AI response
+        const aiResponse = await aiService.chat(history, systemPrompt);
 
-        // Save AI response
+        // 7. Save AI response
         const assistantMessage = await this.create(userId, conversationId, {
             content: aiResponse,
             role: 'ASSISTANT',
@@ -113,7 +142,93 @@ export class MessageService {
         return {
             userMessage,
             assistantMessage,
+            sources: retrievalResult.chunks.map(chunk => ({
+                fileName: chunk.fileName,
+                fileId: chunk.fileId,
+                tag: chunk.fileTag,
+                similarity: chunk.similarity
+            }))
         };
+    }
+
+    /**
+     * Stream message and AI response using RAG
+     */
+    async streamMessageAndGetResponse(
+        userId: string,
+        conversationId: string,
+        content: string,
+        res: any // Express Response
+    ) {
+        // 1. Verify ownership and get conversation context with subject name
+        const conversation = await prisma.conversation.findFirst({
+            where: { id: conversationId, userId },
+            select: {
+                subjectId: true,
+                subject: { select: { title: true } }
+            }
+        });
+
+        if (!conversation) {
+            throw AppError.notFound('Conversation not found');
+        }
+
+        const subjectName = conversation.subject?.title;
+
+        // 2. Create user message
+        const userMessage = await this.create(userId, conversationId, {
+            content,
+            role: 'USER',
+        });
+
+        // 3. Retrieve relevant context from files
+        const retrievalResult = await ragService.retrieve(userId, content, {
+            subjectId: conversation.subjectId,
+            topK: 5
+        });
+
+        const contextText = ragService.formatContext(retrievalResult.chunks);
+
+        // 4. Build smart AI prompt with subject context
+        const systemPrompt = buildSystemPrompt(subjectName, contextText);
+
+        // 5. Set up SSE headers
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+
+        // 6. Send user message and sources first
+        const sources = retrievalResult.chunks.map(chunk => ({
+            fileName: chunk.fileName,
+            fileId: chunk.fileId,
+            tag: chunk.fileTag,
+            similarity: chunk.similarity
+        }));
+
+        res.write(`data: ${JSON.stringify({ type: 'userMessage', data: userMessage })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'sources', data: sources })}\n\n`);
+
+        // 7. Get conversation history
+        const history = await this.getConversationHistory(userId, conversationId);
+
+        try {
+            // 8. Stream the AI response
+            const accumulatedContent = await aiService.chatStream(history, res, systemPrompt);
+
+            // 9. Save AI response
+            const assistantMessage = await this.create(userId, conversationId, {
+                content: accumulatedContent,
+                role: 'ASSISTANT',
+            });
+
+            // 10. Send the final saved message
+            res.write(`data: ${JSON.stringify({ type: 'assistantMessage', data: assistantMessage })}\n\n`);
+            res.end();
+        } catch (error) {
+            console.error('Stream error:', error);
+            res.end();
+        }
     }
 }
 

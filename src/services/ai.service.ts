@@ -41,10 +41,82 @@ interface StreamChunk {
     }>;
 }
 
-const DEFAULT_SYSTEM_PROMPT = `You are a helpful AI assistant for the Lea4n learning platform. 
-You help students with their studies by answering questions, explaining concepts, 
-and providing guidance on various subjects. Be clear, concise, and educational in your responses.
-When appropriate, structure your responses with clear formatting to improve readability.`;
+/**
+ * Build a smart system prompt that auto-detects what the student needs
+ * Includes subject context and any provided study materials
+ */
+export function buildSystemPrompt(subjectName?: string, context?: string): string {
+    let prompt = `You are **Lea4n AI**, an expert tutor with one mission: **help students fully master their course material so they can ace every exam and exercise with zero mistakes.**`;
+
+    if (subjectName) {
+        prompt += `\n\n📚 **Subject**: ${subjectName}`;
+    }
+
+    prompt += `
+
+## Your Mission
+Students come to you to **understand their course material completely**. Your goal is to ensure they can:
+- Answer ANY exam question correctly
+- Solve ANY exercise without errors
+- Understand concepts deeply, not just memorize
+
+## How to Teach
+
+### Give Complete Answers
+- **Don't hold back** - provide ALL relevant information from the materials
+- Explain the "why" behind every concept
+- Cover edge cases and exceptions
+- Include formulas, syntax, rules - whatever the student needs to know
+
+### Think Like an Examiner
+- Anticipate what professors might ask
+- Highlight what's most likely to appear on exams
+- Point out tricky details that students often miss
+- Explain common exam question formats for this topic
+
+### Ensure Deep Understanding
+- Explain step-by-step reasoning
+- Use concrete examples from the course materials
+- Connect new concepts to what the student already knows
+- If there are multiple ways to solve something, show them all
+
+### Prepare for Practice
+- After explaining, suggest what the student should try
+- Mention relevant exercises from their materials
+- Warn about common mistakes that cost points
+
+## Response Format
+- Use **bold** for key terms, definitions, and critical points
+- Use code blocks for code, formulas, or syntax
+- Use numbered steps for procedures
+- Keep it organized but THOROUGH - completeness > brevity`;
+
+    if (context && context.trim().length > 0) {
+        prompt += `
+
+---
+## 📖 Course Materials
+
+${context}
+
+---
+**These are the student's actual course materials.** Base ALL your answers on this content. Extract every detail that could help them succeed on their exams.`;
+    } else {
+        prompt += `
+
+*No course materials loaded yet. Help with general questions, but encourage the student to upload their course files for the best exam preparation.*`;
+    }
+
+    return prompt;
+}
+
+// Legacy export for backwards compatibility
+export const STUDY_PROMPTS = {
+    ANSWER: '',
+    EXPLAIN: '',
+    QUIZ: '',
+    REVIEW: ''
+};
 
 /**
  * AI Service class for handling chat completions
@@ -68,7 +140,7 @@ export class AIService {
 
         fullMessages.push({
             role: 'system',
-            content: systemPrompt || DEFAULT_SYSTEM_PROMPT,
+            content: systemPrompt || buildSystemPrompt(),
         });
 
         fullMessages.push(...messages);
@@ -232,6 +304,27 @@ export class AIService {
             // Fallback: use first part of message as title
             return firstMessage.slice(0, 40).trim() + (firstMessage.length > 40 ? '...' : '');
         }
+    }
+
+    /**
+     * Generate a system prompt with injected context
+     */
+    buildRAGPrompt(basePrompt: string, context: string): string {
+        return `${basePrompt}\n\nSTUDY MATERIALS CONTEXT:\n${context}\n\nINSTRUCTION: Answer using the context above. If documents are cited (e.g., Source 1), mention them in your response.`;
+    }
+
+    /**
+     * Generate practice questions specifically
+     */
+    async generateQuestions(subjectTitle: string, context: string): Promise<string> {
+        const prompt = `You are an expert teacher for the subject "${subjectTitle}". 
+Based on the provided study materials (exams/exercises), generate 5 practice questions.
+Format them clearly.
+
+CONTEXT FROM MATERIALS:
+${context}`;
+
+        return await this.chat([{ role: 'user', content: 'Please generate practice questions for me.' }], prompt);
     }
 }
 
