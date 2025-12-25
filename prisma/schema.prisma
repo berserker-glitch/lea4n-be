@@ -46,9 +46,10 @@ model Subject {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // A subject can have multiple conversations and files
+  // A subject can have multiple conversations, files, and memories
   conversations Conversation[]
   files         File[]
+  memories      SubjectMemory[]
 
   @@index([userId])
   @@map("subjects")
@@ -205,6 +206,31 @@ model FileEmbedding {
 }
 
 // ===========================================
+// SUBJECT MEMORY MODEL
+// ===========================================
+// Persistent memory entries scoped to a subject
+// Shared across all conversations in that subject
+model SubjectMemory {
+  id          String         @id @default(uuid())
+  content     String         @db.Text       // The actual memory content
+  category    MemoryCategory               // Type of memory
+  importance  Int            @default(5)    // 1-10 priority for context injection
+  sourceConversationId String?            // Which conversation this came from
+  isActive    Boolean        @default(true) // Soft delete / disable memories
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  expiresAt   DateTime?                     // Optional expiry for time-sensitive info
+
+  // Subject relation - memory belongs to a subject
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@index([subjectId, isActive, importance])
+  @@map("subject_memories")
+}
+
+// ===========================================
 // ENUMS
 // ===========================================
 enum MessageRole {
@@ -231,4 +257,13 @@ enum ProcessStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+enum MemoryCategory {
+  PREFERENCE      // Learning style, communication preferences
+  FACT            // Information student shared about themselves/goals
+  PROGRESS        // Learning progress, completed topics
+  CORRECTION      // Mistakes and corrections
+  GOAL            // Deadlines, exam dates, targets
+  CUSTOM          // User-marked important info
 }

@@ -41,15 +41,39 @@ interface StreamChunk {
     }>;
 }
 
+// Memory extraction response interface
+export interface ExtractedMemoryItem {
+    content: string;
+    category: 'PREFERENCE' | 'FACT' | 'PROGRESS' | 'CORRECTION' | 'GOAL' | 'CUSTOM';
+    importance: number;
+}
+
 /**
  * Build a smart system prompt that auto-detects what the student needs
- * Includes subject context and any provided study materials
+ * Includes subject context, study materials, and persistent memory
  */
-export function buildSystemPrompt(subjectName?: string, context?: string): string {
+export function buildSystemPrompt(
+    subjectName?: string,
+    context?: string,
+    memoryContext?: string
+): string {
     let prompt = `You are **Lea4n AI**, an expert tutor with one mission: **help students fully master their course material so they can ace every exam and exercise with zero mistakes.**`;
 
     if (subjectName) {
         prompt += `\n\n📚 **Subject**: ${subjectName}`;
+    }
+
+    // Add memory context if available (things we know about this student)
+    if (memoryContext && memoryContext.trim().length > 0) {
+        prompt += `
+
+---
+## 🧠 What You Know About This Student
+
+${memoryContext}
+
+---
+**Use this context to personalize your responses. Reference past interactions when relevant.**`;
     }
 
     prompt += `
@@ -325,6 +349,73 @@ CONTEXT FROM MATERIALS:
 ${context}`;
 
         return await this.chat([{ role: 'user', content: 'Please generate practice questions for me.' }], prompt);
+    }
+
+    /**
+     * Extract memories from a conversation turn
+     * Returns structured memory items to be saved
+     */
+    async extractMemories(
+        userMessage: string,
+        aiResponse: string,
+        existingMemories: string[]
+    ): Promise<ExtractedMemoryItem[]> {
+        const extractionPrompt = `You are a memory extraction assistant. Analyze this conversation turn and extract any information worth remembering for future conversations.
+
+USER MESSAGE: ${userMessage}
+
+AI RESPONSE (summary): ${aiResponse.slice(0, 500)}${aiResponse.length > 500 ? '...' : ''}
+
+EXISTING MEMORIES (avoid duplicates):
+${existingMemories.length > 0 ? existingMemories.slice(0, 10).join('\n') : 'None yet'}
+
+Extract memories in this JSON format ONLY (no markdown, no explanation):
+[
+  {
+    "content": "Concise fact/preference to remember",
+    "category": "PREFERENCE|FACT|PROGRESS|CORRECTION|GOAL|CUSTOM",
+    "importance": 1-10
+  }
+]
+
+Rules:
+- Only extract genuinely useful, specific information
+- Avoid vague or temporary info (like "asked about X")
+- Higher importance (7-10) for: exam dates, learning struggles, explicit preferences, goals
+- Medium importance (4-6) for: facts about student, progress updates
+- Lower importance (1-3) for: minor preferences, general info
+- Return empty array [] if nothing worth remembering
+- Maximum 3 memories per extraction`;
+
+        try {
+            const response = await this.chat(
+                [{ role: 'user', content: extractionPrompt }],
+                'You extract structured memories from conversations. Return ONLY valid JSON arrays, no other text.'
+            );
+
+            // Parse the JSON response
+            const cleaned = response.trim()
+                .replace(/```json\n?/g, '')
+                .replace(/```\n?/g, '')
+                .trim();
+
+            const memories = JSON.parse(cleaned) as ExtractedMemoryItem[];
+
+            // Validate and filter
+            return memories
+                .filter(m =>
+                    m.content &&
+                    m.content.length > 5 &&
+                    m.content.length < 500 &&
+                    ['PREFERENCE', 'FACT', 'PROGRESS', 'CORRECTION', 'GOAL', 'CUSTOM'].includes(m.category) &&
+                    m.importance >= 1 &&
+                    m.importance <= 10
+                )
+                .slice(0, 3); // Max 3 per extraction
+        } catch (error) {
+            console.error('Memory extraction failed:', error);
+            return [];
+        }
     }
 }
 

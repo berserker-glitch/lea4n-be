@@ -6,6 +6,7 @@ import fileRoutes from './file.routes';
 import messageRoutes from './message.routes';
 import feedbackRoutes from './feedback.routes';
 import ragRoutes from './rag.routes';
+import memoryStandaloneRoutes from './memory-standalone.routes';
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use('/conversations', messageRoutes); // Message routes nested under conv
 router.use('/files', fileRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/rag', ragRoutes);
+router.use('/memories', memoryStandaloneRoutes); // Standalone memory operations
 
 export default router;
 

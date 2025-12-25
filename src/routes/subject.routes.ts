@@ -24,6 +24,7 @@ import {
     listQuerySchema as fileListQuerySchema,
 } from '../controllers/file.controller';
 import { upload } from '../config/upload';
+import memoryRoutes from './memory.routes';
 
 const router = Router();
 
@@ -157,5 +158,17 @@ router.get(
     getFilesBySubject
 );
 
+// ===========================================
+// NESTED MEMORY ROUTES
+// ===========================================
+
+/**
+ * @route   /subjects/:subjectId/memories/*
+ * @desc    Memory routes for a subject
+ * @access  Private
+ */
+router.use('/:subjectId/memories', memoryRoutes);
+
 export default router;
+
 
