@@ -55,12 +55,22 @@ export interface ExtractedMemoryItem {
 export function buildSystemPrompt(
     subjectName?: string,
     context?: string,
-    memoryContext?: string
+    memoryContext?: string,
+    availableFiles?: Array<{ name: string; tag?: string | null }>
 ): string {
     let prompt = `You are **Lea4n AI**, an expert tutor with one mission: **help students fully master their course material so they can ace every exam and exercise with zero mistakes.**`;
 
     if (subjectName) {
         prompt += `\n\n📚 **Subject**: ${subjectName}`;
+    }
+
+    // Add list of available files so AI knows what materials the student has
+    if (availableFiles && availableFiles.length > 0) {
+        const fileList = availableFiles.map((f, i) => {
+            const tag = f.tag ? ` (${f.tag})` : '';
+            return `${i + 1}. ${f.name}${tag}`;
+        }).join('\n');
+        prompt += `\n\n📁 **Uploaded Materials** (${availableFiles.length} files):\n${fileList}`;
     }
 
     // Add memory context if available (things we know about this student)
@@ -134,6 +144,7 @@ ${context}
     return prompt;
 }
 
+
 // Legacy export for backwards compatibility
 export const STUDY_PROMPTS = {
     ANSWER: '',
@@ -157,6 +168,28 @@ export class AIService {
     }
 
     /**
+     * Estimate token count (rough approximation: ~4 chars per token)
+     */
+    private estimateTokens(text: string): number {
+        return Math.ceil(text.length / 4);
+    }
+
+    /**
+     * Log context window usage for debugging
+     */
+    private logContextUsage(messages: ChatMessage[]): void {
+        const totalContent = messages.map(m => m.content).join('');
+        const estimatedTokens = this.estimateTokens(totalContent);
+        const systemPromptTokens = this.estimateTokens(messages.find(m => m.role === 'system')?.content || '');
+
+        console.log(`\n📊 AI Context Window Usage:`);
+        console.log(`   - Messages: ${messages.length}`);
+        console.log(`   - System prompt: ~${systemPromptTokens} tokens`);
+        console.log(`   - Total context: ~${estimatedTokens} tokens`);
+        console.log(`   - Characters: ${totalContent.length.toLocaleString()}\n`);
+    }
+
+    /**
      * Build full messages array with system prompt
      */
     private buildMessages(messages: ChatMessage[], systemPrompt?: string): ChatMessage[] {
@@ -168,6 +201,10 @@ export class AIService {
         });
 
         fullMessages.push(...messages);
+
+        // Log context window usage
+        this.logContextUsage(fullMessages);
+
         return fullMessages;
     }
 
@@ -193,7 +230,7 @@ export class AIService {
                 body: JSON.stringify({
                     model: AI_MODEL,
                     messages: fullMessages,
-                    max_tokens: 2048,
+                    // No max_tokens limit - let model output as much as needed
                     temperature: 0.7,
                 }),
             });
@@ -252,7 +289,7 @@ export class AIService {
                 body: JSON.stringify({
                     model: AI_MODEL,
                     messages: fullMessages,
-                    max_tokens: 2048,
+                    // No max_tokens limit - let model output as much as needed
                     temperature: 0.7,
                     stream: true, // Enable streaming
                 }),

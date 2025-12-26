@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { AppError } from '../utils';
 import prisma from '../config/database';
+import { UserRole } from '@prisma/client';
 
 /**
  * Extended Request interface with authenticated user data
@@ -11,12 +12,14 @@ export interface AuthenticatedRequest extends Request {
     user: {
         id: string;
         email: string;
+        role: UserRole;
     };
 }
 
 interface JwtPayload {
     userId: string;
     email: string;
+    role: UserRole;
     iat: number;
     exp: number;
 }
@@ -54,20 +57,21 @@ export const authenticate = async (
             throw jwtError;
         }
 
-        // Verify user still exists in database
+        // Verify user still exists in database and get current role
         const user = await prisma.user.findUnique({
             where: { id: decoded.userId },
-            select: { id: true, email: true },
+            select: { id: true, email: true, role: true },
         });
 
         if (!user) {
             throw AppError.unauthorized('User no longer exists', 'USER_NOT_FOUND');
         }
 
-        // Attach user to request object
+        // Attach user to request object (use DB role for most up-to-date)
         (req as AuthenticatedRequest).user = {
             id: user.id,
             email: user.email,
+            role: user.role,
         };
 
         next();

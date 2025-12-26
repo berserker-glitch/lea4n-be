@@ -8,7 +8,7 @@ import { AppError } from '../utils';
 export class OCRService {
     private apiKey: string;
     private apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-    private model = 'deepseek/deepseek-vl2'; // Vision-capable model
+    private model = 'google/gemini-2.0-flash-001'; // Vision-capable model
 
     constructor() {
         this.apiKey = process.env.OPENROUTER_API_KEY || '';
@@ -66,7 +66,7 @@ export class OCRService {
                             ]
                         }
                     ],
-                    max_tokens: 4096,
+                    // No max_tokens limit - let model output as much as needed
                 }),
             });
 

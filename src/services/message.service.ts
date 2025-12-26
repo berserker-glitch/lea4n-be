@@ -124,12 +124,20 @@ export class MessageService {
         });
         const contextText = ragService.formatContext(retrievalResult.chunks);
 
-        // 4. Fetch subject memories for cross-conversation context
+        // 4. Fetch all files for this subject (so AI knows what's available)
+        const allFiles = await prisma.file.findMany({
+            where: { subjectId, userId },
+            select: { originalName: true, tag: true },
+            orderBy: { createdAt: 'desc' }
+        });
+        const availableFiles = allFiles.map(f => ({ name: f.originalName, tag: f.tag }));
+
+        // 5. Fetch subject memories for cross-conversation context
         const memories = await memoryService.getSubjectMemories(userId, subjectId);
         const memoryContext = memoryService.formatMemoriesForPrompt(memories);
 
-        // 5. Build smart AI prompt with subject context AND memory
-        const systemPrompt = buildSystemPrompt(subjectName, contextText, memoryContext);
+        // 6. Build smart AI prompt with subject context, memory, AND file list
+        const systemPrompt = buildSystemPrompt(subjectName, contextText, memoryContext, availableFiles);
 
         // 6. Get conversation history
         const history = await this.getConversationHistory(userId, conversationId);
@@ -197,12 +205,20 @@ export class MessageService {
         });
         const contextText = ragService.formatContext(retrievalResult.chunks);
 
-        // 4. Fetch subject memories for cross-conversation context
+        // 4. Fetch all files for this subject (so AI knows what's available)
+        const allFiles = await prisma.file.findMany({
+            where: { subjectId, userId },
+            select: { originalName: true, tag: true },
+            orderBy: { createdAt: 'desc' }
+        });
+        const availableFiles = allFiles.map(f => ({ name: f.originalName, tag: f.tag }));
+
+        // 5. Fetch subject memories for cross-conversation context
         const memories = await memoryService.getSubjectMemories(userId, subjectId);
         const memoryContext = memoryService.formatMemoriesForPrompt(memories);
 
-        // 5. Build smart AI prompt with subject context AND memory
-        const systemPrompt = buildSystemPrompt(subjectName, contextText, memoryContext);
+        // 6. Build smart AI prompt with subject context, memory, AND file list
+        const systemPrompt = buildSystemPrompt(subjectName, contextText, memoryContext, availableFiles);
 
         // 6. Set up SSE headers
         res.setHeader('Content-Type', 'text/event-stream');
@@ -225,8 +241,25 @@ export class MessageService {
         const history = await this.getConversationHistory(userId, conversationId);
 
         try {
+            // Calculate token usage estimate (before AI call)
+            const historyText = history.map(m => m.content).join('');
+            const estimateTokens = (text: string) => Math.ceil(text.length / 4);
+            const tokenUsage = {
+                systemPrompt: estimateTokens(systemPrompt),
+                conversationHistory: estimateTokens(historyText),
+                ragContext: estimateTokens(contextText),
+                files: availableFiles.length,
+                total: estimateTokens(systemPrompt + historyText)
+            };
+
+            // Send token usage to frontend
+            res.write(`data: ${JSON.stringify({ type: 'tokenUsage', data: tokenUsage })}\n\n`);
+
             // 9. Stream the AI response
             const accumulatedContent = await aiService.chatStream(history, res, systemPrompt);
+
+            // Update token usage with response tokens
+            tokenUsage.total += estimateTokens(accumulatedContent);
 
             // 10. Save AI response
             const assistantMessage = await this.create(userId, conversationId, {
@@ -234,8 +267,9 @@ export class MessageService {
                 role: 'ASSISTANT',
             });
 
-            // 11. Send the final saved message
+            // 11. Send the final saved message with updated token usage
             res.write(`data: ${JSON.stringify({ type: 'assistantMessage', data: assistantMessage })}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'tokenUsageFinal', data: tokenUsage })}\n\n`);
             res.end();
 
             // 12. Extract and save memories (fire-and-forget, after response)

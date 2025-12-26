@@ -7,6 +7,7 @@ import messageRoutes from './message.routes';
 import feedbackRoutes from './feedback.routes';
 import ragRoutes from './rag.routes';
 import memoryStandaloneRoutes from './memory-standalone.routes';
+import adminRoutes from './admin.routes';
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.use('/files', fileRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/rag', ragRoutes);
 router.use('/memories', memoryStandaloneRoutes); // Standalone memory operations
+router.use('/admin', adminRoutes); // Admin routes (SUPERADMIN only)
 
 export default router;
 
