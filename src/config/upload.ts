@@ -3,7 +3,8 @@ import path from 'path';
 import fs from 'fs';
 
 // Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '../../uploads');
+// Use UPLOADS_DIR env var for production (Coolify volume mount), fallback to local uploads folder
+const uploadDir = process.env.UPLOADS_DIR || path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }

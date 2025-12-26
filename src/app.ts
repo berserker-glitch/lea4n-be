@@ -62,7 +62,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // STATIC FILES - Serve uploaded files
 // ===========================================
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+const uploadsPath = process.env.UPLOADS_DIR || path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 // ===========================================
 // ROUTES
