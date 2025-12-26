@@ -1,7 +1,6 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { config, isDevelopment } from './config';
 import routes from './routes';
@@ -29,24 +28,6 @@ app.use(
         allowedHeaders: ['Content-Type', 'Authorization'],
     })
 );
-
-// Rate limiting to prevent brute force attacks
-const limiter = rateLimit({
-    windowMs: config.rateLimitWindowMs,
-    max: config.rateLimitMax,
-    message: {
-        success: false,
-        error: {
-            message: 'Too many requests, please try again later',
-            code: 'RATE_LIMIT_EXCEEDED',
-            statusCode: 429,
-        },
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-app.use('/api', limiter);
 
 // ===========================================
 // BODY PARSING MIDDLEWARE
