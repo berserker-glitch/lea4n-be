@@ -8,6 +8,8 @@ import {
     getProfile,
     updateProfile,
     changePassword,
+    githubAuth,
+    githubCallback,
     registerSchema,
     loginSchema,
     verifyEmailSchema,
@@ -50,6 +52,20 @@ router.post('/resend-otp', validate(resendOTPSchema), resendOTP);
  */
 router.post('/login', validate(loginSchema), login);
 
+/**
+ * @route   GET /auth/github
+ * @desc    Get GitHub OAuth authorization URL
+ * @access  Public
+ */
+router.get('/github', githubAuth);
+
+/**
+ * @route   POST /auth/github/callback
+ * @desc    Handle GitHub OAuth callback
+ * @access  Public
+ */
+router.post('/github/callback', githubCallback);
+
 // ===========================================
 // PROTECTED ROUTES
 // ===========================================
@@ -81,3 +97,4 @@ router.post(
 );
 
 export default router;
+

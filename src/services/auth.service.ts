@@ -229,7 +229,11 @@ export class AuthService {
             throw AppError.unauthorized('Invalid email or password', 'INVALID_CREDENTIALS');
         }
 
-        // Verify password
+        // Verify password (OAuth users won't have a password)
+        if (!user.password) {
+            throw AppError.unauthorized('Invalid email or password', 'INVALID_CREDENTIALS');
+        }
+
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
@@ -334,7 +338,11 @@ export class AuthService {
             throw AppError.notFound('User not found', 'USER_NOT_FOUND');
         }
 
-        // Verify current password
+        // Verify current password (OAuth users can't change password this way)
+        if (!user.password) {
+            throw AppError.badRequest('Cannot change password for OAuth accounts', 'OAUTH_ACCOUNT');
+        }
+
         const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
 
         if (!isPasswordValid) {
@@ -349,6 +357,62 @@ export class AuthService {
             where: { id: userId },
             data: { password: hashedPassword },
         });
+    }
+
+    /**
+     * Login or register user with GitHub OAuth
+     * GitHub users are automatically verified (no OTP required)
+     */
+    async loginWithGitHub(githubId: string, email: string, name: string | null): Promise<AuthResponse> {
+        // Check if user exists by githubId
+        let user = await prisma.user.findUnique({
+            where: { githubId },
+        });
+
+        if (!user) {
+            // Check if email already exists (link accounts)
+            const existingUserByEmail = await prisma.user.findUnique({
+                where: { email: email.toLowerCase() },
+            });
+
+            if (existingUserByEmail) {
+                // Link GitHub to existing account
+                user = await prisma.user.update({
+                    where: { id: existingUserByEmail.id },
+                    data: {
+                        githubId,
+                        isEmailVerified: true, // Auto-verify for GitHub users
+                    },
+                });
+            } else {
+                // Create new user with GitHub
+                user = await prisma.user.create({
+                    data: {
+                        email: email.toLowerCase(),
+                        githubId,
+                        name,
+                        isEmailVerified: true, // GitHub users are auto-verified
+                        setupCompleted: false,
+                    },
+                });
+            }
+        }
+
+        // Generate token
+        const token = this.generateToken(user.id, user.email, user.role);
+
+        return {
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                isEmailVerified: user.isEmailVerified,
+                setupCompleted: user.setupCompleted,
+                createdAt: user.createdAt,
+            },
+            token,
+        };
     }
 
     /**

@@ -154,3 +154,54 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
         message: 'Password changed successfully',
     });
 });
+
+/**
+ * GitHub OAuth - Get authorization URL
+ * GET /auth/github
+ */
+export const githubAuth = asyncHandler(async (_req: Request, res: Response) => {
+    const { githubService } = await import('../services/github.service');
+    const authUrl = githubService.getAuthorizationUrl();
+
+    res.status(200).json({
+        success: true,
+        data: { authUrl },
+    });
+});
+
+/**
+ * GitHub OAuth callback
+ * POST /auth/github/callback
+ */
+export const githubCallback = asyncHandler(async (req: Request, res: Response) => {
+    const { code } = req.body;
+
+    if (!code) {
+        res.status(400).json({
+            success: false,
+            error: { message: 'Authorization code is required', code: 'MISSING_CODE', statusCode: 400 },
+        });
+        return;
+    }
+
+    const { githubService } = await import('../services/github.service');
+
+    // Exchange code for access token
+    const accessToken = await githubService.exchangeCodeForToken(code);
+
+    // Get GitHub user info
+    const githubUser = await githubService.getGitHubUser(accessToken);
+
+    // Login or register with GitHub
+    const result = await authService.loginWithGitHub(
+        githubUser.githubId,
+        githubUser.email,
+        githubUser.name
+    );
+
+    res.status(200).json({
+        success: true,
+        message: 'GitHub authentication successful',
+        data: result,
+    });
+});

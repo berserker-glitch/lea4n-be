@@ -27,6 +27,11 @@ interface Config {
     smtpUser: string;
     smtpPassword: string;
     smtpFrom: string;
+
+    // GitHub OAuth
+    githubClientId: string;
+    githubClientSecret: string;
+    frontendUrl: string;
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
@@ -75,7 +80,13 @@ export const config: Config = {
     smtpUser: getEnvVar('SMTP_USER', ''),
     smtpPassword: getEnvVar('SMTP_PASSWORD', ''),
     smtpFrom: getEnvVar('SMTP_FROM', 'noreply@lea4n.com'),
+
+    // GitHub OAuth
+    githubClientId: getEnvVar('GITHUB_CLIENT_ID', ''),
+    githubClientSecret: getEnvVar('GITHUB_CLIENT_SECRET', ''),
+    frontendUrl: getEnvVar('FRONTEND_URL', 'http://localhost:3000'),
 };
 
 export const isProduction = config.nodeEnv === 'production';
 export const isDevelopment = config.nodeEnv === 'development';
+
