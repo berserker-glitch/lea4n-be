@@ -3,11 +3,15 @@ import { authenticate, validate } from '../middlewares';
 import {
     register,
     login,
+    verifyEmail,
+    resendOTP,
     getProfile,
     updateProfile,
     changePassword,
     registerSchema,
     loginSchema,
+    verifyEmailSchema,
+    resendOTPSchema,
     updateProfileSchema,
     changePasswordSchema,
 } from '../controllers/auth.controller';
@@ -24,6 +28,20 @@ const router = Router();
  * @access  Public
  */
 router.post('/register', validate(registerSchema), register);
+
+/**
+ * @route   POST /auth/verify-email
+ * @desc    Verify email with OTP
+ * @access  Public
+ */
+router.post('/verify-email', validate(verifyEmailSchema), verifyEmail);
+
+/**
+ * @route   POST /auth/resend-otp
+ * @desc    Resend OTP for email verification
+ * @access  Public
+ */
+router.post('/resend-otp', validate(resendOTPSchema), resendOTP);
 
 /**
  * @route   POST /auth/login

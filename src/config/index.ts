@@ -20,6 +20,13 @@ interface Config {
     bcryptSaltRounds: number;
     rateLimitMax: number;
     rateLimitWindowMs: number;
+
+    // SMTP
+    smtpHost: string;
+    smtpPort: number;
+    smtpUser: string;
+    smtpPassword: string;
+    smtpFrom: string;
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
@@ -61,6 +68,13 @@ export const config: Config = {
     bcryptSaltRounds: getEnvVarAsNumber('BCRYPT_SALT_ROUNDS', 10),
     rateLimitMax: getEnvVarAsNumber('RATE_LIMIT_MAX', 100),
     rateLimitWindowMs: getEnvVarAsNumber('RATE_LIMIT_WINDOW_MS', 15) * 60 * 1000, // Convert minutes to ms
+
+    // SMTP
+    smtpHost: getEnvVar('SMTP_HOST', ''),
+    smtpPort: getEnvVarAsNumber('SMTP_PORT', 587),
+    smtpUser: getEnvVar('SMTP_USER', ''),
+    smtpPassword: getEnvVar('SMTP_PASSWORD', ''),
+    smtpFrom: getEnvVar('SMTP_FROM', 'noreply@lea4n.com'),
 };
 
 export const isProduction = config.nodeEnv === 'production';

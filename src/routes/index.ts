@@ -8,6 +8,7 @@ import feedbackRoutes from './feedback.routes';
 import ragRoutes from './rag.routes';
 import memoryStandaloneRoutes from './memory-standalone.routes';
 import adminRoutes from './admin.routes';
+import onboardingRoutes from './onboarding.routes';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/feedback', feedbackRoutes);
 router.use('/rag', ragRoutes);
 router.use('/memories', memoryStandaloneRoutes); // Standalone memory operations
 router.use('/admin', adminRoutes); // Admin routes (SUPERADMIN only)
+router.use('/onboarding', onboardingRoutes); // User onboarding/setup routes
 
 export default router;
 

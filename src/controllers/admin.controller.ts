@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { adminService } from '../services/admin.service';
+import { onboardingService } from '../services/onboarding.service';
 
 /**
  * Admin Controller - handles admin-only routes
@@ -13,6 +14,25 @@ export const adminController = {
         try {
             const stats = await adminService.getDashboardStats();
             res.json({ success: true, data: stats });
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * GET /admin/analytics - Get analytics data (sources, institutions, trends)
+     */
+    async getAnalytics(_req: AuthenticatedRequest, res: Response, next: NextFunction) {
+        try {
+            const [sources, institutions, growthTrends] = await Promise.all([
+                onboardingService.getSourceAnalytics(),
+                onboardingService.getInstitutionAnalytics(10),
+                onboardingService.getUserGrowthTrends(30),
+            ]);
+            res.json({
+                success: true,
+                data: { sources, institutions, growthTrends },
+            });
         } catch (error) {
             next(error);
         }

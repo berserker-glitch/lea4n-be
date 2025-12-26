@@ -27,6 +27,15 @@ model User {
   password  String
   name      String?
   role      UserRole @default(USER)
+  
+  // Email Verification
+  isEmailVerified      Boolean   @default(false)
+  emailVerificationOTP String?
+  otpExpiresAt         DateTime?
+  
+  // Onboarding Status
+  setupCompleted Boolean @default(false)
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -35,8 +44,26 @@ model User {
   conversations   Conversation[]
   files           File[]
   messageFeedback MessageFeedback[]
+  onboarding      UserOnboarding?
 
   @@map("users")
+}
+
+// ===========================================
+// USER ONBOARDING MODEL
+// ===========================================
+// Analytics data collected during user setup
+model UserOnboarding {
+  id          String     @id @default(uuid())
+  heardFrom   UserSource
+  institution String
+  createdAt   DateTime   @default(now())
+
+  // User relation (1:1)
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_onboarding")
 }
 
 // ===========================================
@@ -275,4 +302,13 @@ enum MemoryCategory {
   CORRECTION      // Mistakes and corrections
   GOAL            // Deadlines, exam dates, targets
   CUSTOM          // User-marked important info
+}
+
+enum UserSource {
+  SOCIAL_MEDIA
+  FRIEND_REFERRAL
+  SEARCH_ENGINE
+  SCHOOL
+  YOUTUBE
+  OTHER
 }

@@ -42,6 +42,15 @@ export const changePasswordSchema = z.object({
         ),
 });
 
+export const verifyEmailSchema = z.object({
+    email: z.string().email('Invalid email format'),
+    otp: z.string().length(6, 'Verification code must be 6 digits'),
+});
+
+export const resendOTPSchema = z.object({
+    email: z.string().email('Invalid email format'),
+});
+
 // ===========================================
 // CONTROLLER HANDLERS
 // ===========================================
@@ -55,8 +64,35 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
     res.status(201).json({
         success: true,
-        message: 'User registered successfully',
+        message: 'Registration successful. Please check your email for verification code.',
         data: result,
+    });
+});
+
+/**
+ * Verify email with OTP
+ * POST /auth/verify-email
+ */
+export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+    const result = await authService.verifyEmail(req.body);
+
+    res.status(200).json({
+        success: true,
+        message: 'Email verified successfully',
+        data: result,
+    });
+});
+
+/**
+ * Resend OTP for email verification
+ * POST /auth/resend-otp
+ */
+export const resendOTP = asyncHandler(async (req: Request, res: Response) => {
+    const result = await authService.resendOTP(req.body.email);
+
+    res.status(200).json({
+        success: true,
+        message: result.message,
     });
 });
 

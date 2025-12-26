@@ -17,6 +17,13 @@ router.use(requireAdmin as any);
 router.get('/stats', adminController.getStats as any);
 
 /**
+ * @route   GET /admin/analytics
+ * @desc    Get analytics data (sources, institutions, user growth trends)
+ * @access  SUPERADMIN only
+ */
+router.get('/analytics', adminController.getAnalytics as any);
+
+/**
  * @route   GET /admin/users
  * @desc    List all users with pagination
  * @access  SUPERADMIN only
